@@ -1,0 +1,4 @@
+paths:
+  raw_data: data/raw/pipeline_metrics.csv
+  processed_data: data/processed/anomaly_results.csv
+  model_path: ml/isolation_forest.pkl
