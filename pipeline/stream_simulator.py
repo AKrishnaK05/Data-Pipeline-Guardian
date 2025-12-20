@@ -7,7 +7,7 @@ from agent.fix_generator import generate_fix_proposal
 
 WINDOW_DELAY_SECONDS = 1
 
-def stream_simulation(input_path):
+data_pipeline_guardiandef stream_simulation(input_path):
     df = pd.read_csv(input_path)
     BASELINE_WINDOWS = 5  
 
