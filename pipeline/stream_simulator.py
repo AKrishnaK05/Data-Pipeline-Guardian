@@ -7,7 +7,7 @@ from agent.fix_generator import generate_fix_proposal
 
 WINDOW_DELAY_SECONDS = 1
 
-data_pipeline_guardiandef stream_simulation(input_path):
+def stream_simulation(input_path):
     df = pd.read_csv(input_path)
     BASELINE_WINDOWS = 5  
 
@@ -44,6 +44,8 @@ data_pipeline_guardiandef stream_simulation(input_path):
 
                 print("INCIDENT OPENED")
                 print(f"Root cause: {diagnosis['root_cause']}")
+                if "explanation" in diagnosis:
+                     print(f"Explanation: {diagnosis['explanation']}")
                 print(f"Severity: {diagnosis['severity']}")
                 print("-" * 50)
 
@@ -51,7 +53,7 @@ data_pipeline_guardiandef stream_simulation(input_path):
                 fix = generate_fix_proposal(diagnosis)
                 
                 if fix:
-                    print("\n🔧 FIX PROPOSAL")
+                    print("\nFIX PROPOSAL")
                     print(f"Title: {fix['title']}")
                     print(f"Risk: {fix['risk']}")
                     print("\nDiff:")
@@ -67,13 +69,13 @@ data_pipeline_guardiandef stream_simulation(input_path):
                     if choice == "y":
                         apply_fix(fix)
                     else:
-                        print("\n❌ Fix rejected by user\n")
+                        print("\nFix rejected by user\n")
             else:
                 incident.update(diagnosis)
 
         else:
             if incident.active:
-                print("✅ INCIDENT RESOLVED")
+                print("INCIDENT RESOLVED")
                 print(
                     f"Resolved after {incident.recovery_windows} consecutive healthy windows "
                     f"({incident.recovery_windows * 5} minutes of stability)"
