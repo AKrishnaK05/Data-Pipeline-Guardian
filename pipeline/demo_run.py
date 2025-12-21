@@ -1,3 +1,6 @@
+from dotenv import load_dotenv
+load_dotenv()
+
 from pipeline.aggregate_transactions import aggregate_transactions
 from pipeline.stream_simulator import stream_simulation
 
