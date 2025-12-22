@@ -17,28 +17,47 @@ def detection_metrics(df):
 
 def mean_time_to_detect(df):
     df["timestamp"] = pd.to_datetime(df["timestamp"])
+    df = df.sort_values("timestamp")
 
     mttd_values = []
+    
+    current_incident_type = "NONE"
+    incident_start_time = None
+    first_detection_time = None
 
-    for anomaly_type in df["anomaly_type"].unique():
-        if anomaly_type == "NONE":
-            continue
+    for _, row in df.iterrows():
+        atype = row["anomaly_type"]
+        is_detected = row["is_anomaly"] == 1
+        
+        # Check if incident changed
+        if atype != current_incident_type:
+            # Close previous incident if valid
+            if current_incident_type != "NONE":
+                 # If detected, record the delay
+                 if first_detection_time is not None:
+                    delay = (first_detection_time - incident_start_time).total_seconds() / 60
+                    mttd_values.append(delay)
+            
+            # Start new incident
+            current_incident_type = atype
+            if atype != "NONE":
+                incident_start_time = row["timestamp"]
+                first_detection_time = None
+            else:
+                incident_start_time = None
+                first_detection_time = None
+        
+        # If inside an active incident, check for first detection
+        if current_incident_type != "NONE":
+            if is_detected and first_detection_time is None:
+                 first_detection_time = row["timestamp"]
+    
+    # Handle edge case: File ends while incident is active
+    if current_incident_type != "NONE" and first_detection_time is not None:
+        delay = (first_detection_time - incident_start_time).total_seconds() / 60
+        mttd_values.append(delay)
 
-        anomaly_windows = df[df["anomaly_type"] == anomaly_type]
-        first_anomaly_time = anomaly_windows["timestamp"].min()
-
-        detected_windows = anomaly_windows[anomaly_windows["is_anomaly"] == 1]
-        if detected_windows.empty:
-            continue
-
-        first_detection_time = detected_windows["timestamp"].min()
-        detection_delay = (
-            first_detection_time - first_anomaly_time
-        ).total_seconds() / 60
-
-        mttd_values.append(detection_delay)
-
-    return sum(mttd_values) / len(mttd_values) if mttd_values else None
+    return sum(mttd_values) / len(mttd_values) if mttd_values else 0.0
 
 if __name__ == "__main__":
     df = pd.read_csv("data/processed/anomaly_results.csv")

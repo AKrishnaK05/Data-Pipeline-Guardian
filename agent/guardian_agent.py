@@ -1,5 +1,4 @@
 import os
-from google import genai
 from dotenv import load_dotenv
 from agent.rule_engine import rule_based_diagnosis
 from agent.prompts import DIAGNOSIS_PROMPT
@@ -7,8 +6,6 @@ from agent.prompts import DIAGNOSIS_PROMPT
 load_dotenv()
 
 USE_LLM = True
-api_key = os.environ.get("GOOGLE_API_KEY")
-client = genai.Client(api_key=api_key)
 
 def format_context(record, baseline):
     return f"""
@@ -19,34 +16,7 @@ def format_context(record, baseline):
     - Schema Change: {record['schema_change_flag']}
     """
 
-import time
-
-def call_llm(prompt):
-    max_retries = 1
-    base_delay = 10
-    
-    for attempt in range(max_retries):
-        try:
-            response = client.models.generate_content(
-                model="gemini-2.0-flash-exp", contents=prompt
-            )
-            text = response.text
-            if "```json" in text:
-                text = text.split("```json")[1].split("```")[0]
-            elif "```" in text:
-                text = text.split("```")[1].split("```")[0]
-            return json.loads(text)
-        except Exception as e:
-            if "429" in str(e) or "RESOURCE_EXHAUSTED" in str(e):
-                wait_time = base_delay * (2 ** attempt)
-                print(f"[LLM WARNING] Rate limit hit. Retrying in {wait_time}s...")
-                time.sleep(wait_time)
-            else:
-                print(f"[LLM ERROR] Diagnosis failed: {e}")
-                return {}
-    
-    print("[LLM ERROR] Max retries reached.")
-    return {}
+from agent.llm_client import call_llm_hybrid
 
 def run_guardian_agent(anomaly_record, baseline):
     """
@@ -58,7 +28,10 @@ def run_guardian_agent(anomaly_record, baseline):
         return rule_result
 
     full_prompt = DIAGNOSIS_PROMPT + format_context(anomaly_record, baseline)
-    llm_output = call_llm(full_prompt)
+    llm_output = call_llm_hybrid(full_prompt)
+
+    if not llm_output:
+        return rule_result
 
     # Merge: Rule engine is trusted for severity, LLM for explanation/root cause nuances
     # Fallback to rule engine if LLM fails (returns empty dict)
