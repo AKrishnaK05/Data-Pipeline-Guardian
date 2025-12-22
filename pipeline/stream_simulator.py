@@ -37,9 +37,10 @@ def stream_simulation(input_path):
         anomaly = detect_single(record)
 
         if anomaly["is_anomaly"]:
-            diagnosis = run_guardian_agent(anomaly, baseline)
 
+            # OPTIMIZATION: Only use heavy LLM agent for NEW incidents
             if not incident.active:
+                diagnosis = run_guardian_agent(anomaly, baseline)
                 incident.open(record["timestamp"], diagnosis)
 
                 print("INCIDENT OPENED")
@@ -71,11 +72,22 @@ def stream_simulation(input_path):
                     else:
                         print("\nFix rejected by user\n")
             else:
+                # For existing incidents, just update severity using fast rules (No LLM)
+                from agent.rule_engine import rule_based_diagnosis
+                diagnosis = rule_based_diagnosis(anomaly, baseline)
                 incident.update(diagnosis)
+                print(f"   [Active Incident] Severity: {diagnosis['severity']} | Root Cause: {incident.root_cause}")
 
         else:
             if incident.active:
                 print("INCIDENT RESOLVED")
+                
+                from pipeline.runtime_config import PIPELINE_CONFIG
+                if PIPELINE_CONFIG["watermark_minutes"] > 10:
+                    print("  -> Reason: Fix applied (Watermark Increased)")
+                else:
+                    print("  -> Reason: Data stream recovered naturally (Transient Anomaly)")
+
                 print(
                     f"Resolved after {incident.recovery_windows} consecutive healthy windows "
                     f"({incident.recovery_windows * 5} minutes of stability)"

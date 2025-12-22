@@ -2,8 +2,8 @@ import pandas as pd
 import numpy as np
 from datetime import datetime, timedelta
 
-def generate_high_volume_transactions():
-    print("Generating high-volume demo transactions...")
+def generate_high_volume_transactions(scenario_type="transient"):
+    print(f"Generating high-volume demo transactions ({scenario_type})...")
     
     start_time = pd.Timestamp("2025-12-18 15:00:00")
     data = []
@@ -23,10 +23,13 @@ def generate_high_volume_transactions():
         # Determine scenario based on window index
         # 0-4: Normal
         # 5-9: Late Data Incident
-        # 10-11: Recovery
+        # 10-11: Recovery (ONLY IF transient)
         
-        is_late_incident = (5 <= i <= 9)
-        
+        if scenario_type == "transient":
+            is_late_incident = (5 <= i <= 9)
+        else: # persistent
+            is_late_incident = (i >= 5)
+
         for _ in range(ROWS_PER_WINDOW):
             transaction_counter += 1
             tx_id = f"tx_{transaction_counter:06d}"
@@ -59,9 +62,10 @@ def generate_high_volume_transactions():
     columns = ["transaction_id", "event_time", "ingestion_time", "store_id", "amount", "payment_status"]
     df = pd.DataFrame(data, columns=columns)
     
-    output_path = "data/raw/supermarket_transactions.csv"
-    df.to_csv(output_path, index=False)
-    print(f"Generated {len(df)} transactions to {output_path}")
+    output_filename = f"data/raw/supermarket_transactions_{scenario_type}.csv"
+    df.to_csv(output_filename, index=False)
+    print(f"Generated {len(df)} transactions to {output_filename}")
 
 if __name__ == "__main__":
-    generate_high_volume_transactions()
+    generate_high_volume_transactions(scenario_type="transient")
+    generate_high_volume_transactions(scenario_type="persistent")
